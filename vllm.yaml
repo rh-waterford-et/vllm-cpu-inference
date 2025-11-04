@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vllm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vllm
+    spec:
+      containers:
+      - name: vllm
+        image: quay.io/luzuccar/vllm-cpu:dev
+        command: ["/bin/sh", "-c"]
+        args: [
+          "vllm serve meta-llama/Llama-3.2-1B-Instruct --port 8001"
+        ]
+        ports:
+          - containerPort: 8001
+        volumeMounts:
+          - name: llama-storage
+            mountPath: /root/.cache/huggingface
+        securityContext:
+          allowPrivilegeEscalation: true
+        resources:
+          requests:
+            cpu: 48
+            memory: "32Gi"
+          limits:
+            cpu: 48
+            memory: "32Gi"
+        env:
+          - name: HUGGING_FACE_HUB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: hf-token-secret
+                key: token
+      volumes:
+      - name: llama-storage
+        persistentVolumeClaim:
+          claimName: vllm-models
+

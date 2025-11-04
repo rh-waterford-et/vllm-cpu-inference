@@ -1,0 +1,17 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name:  vllm-cpu-inference
+  labels:
+    app: vllm
+spec:
+  to:
+    kind: Service
+    name: vllm-server
+    weight: 100
+  port:
+    targetPort: vllmport
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Allow
+  wildcardPolicy: None
