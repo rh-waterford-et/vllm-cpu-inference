@@ -1,81 +1,154 @@
-# Overview
+This guide provides step-by-step instructions for compiling vLLM from
+source for a CPU-only environment, specifically on a Fedora-based system
+(using dnf). It includes instructions for building with ZenDNN support.
 
-A collection of simple templates to get a vllm (cpu only) enabled container deployed on OpenShift
+## 1.Prerequisites (System Dependencies)
 
+First, install all necessary system-level packages, including
+development tools, compilers, and required libraries.
 
-## Creating container
+\# Install essential build tools
 
-Clone the repository https://github.com/vllm-project/vllm.git
+sudo dnf install git cmake
 
-Execute the following commands
+sudo dnf group install "Development Tools"
 
-```bash
-cd vllm
+\# Install specific compiler toolchain (GCC 12) and LLVM
 
-podman build -f docker/Dockerfile.cpu  --security-opt label=disable --build-arg VLLM_CPU_AVX512BF16=false --build-arg VLLM_CPU_AVX512VNNI=false --build-arg VLLM_CPU_DISABLE_AVX512=false --tag quay.io/luzuccar/vllm-cpu:dev --target vllm-openai .
+sudo dnf install -y gcc-12 g++-12 llvm-toolset
 
-podman push quay.io/<user>/vllm-cpu:<version> 
+\# Install required libraries for vLLM and Python
 
-```
+sudo dnf install -y numactl-devel libnuma-devel python3-devel
 
-For podman notice the flag ```--security-opt label=disable``` - this is due to the fact that the vllm containerfile uses the directive ```--mount=type=```
+## 2. Environment Setup
 
-## Deploy to Openshift
+We will use uv for package management and a specific compiler toolset.
 
+### 2.1. Install uv
 
-The vllm container requires privleged Security Context Constraint (SCC) 
+Install the uv Python package manager:
 
-Execute the following command (you would need cluster-admin permissions)
+curl -LsSf https://astral.sh/uv/install.sh \| sh
 
-```bash 
-oc adm policy add-scc-to-user privileged -z default -n <namespace>
-```
+Note: You may need to restart your shell or source your .bashrc/.zshrc
+file after this step.
 
-Execute the following templates in the specific order (assumes you have created a new namespace/project)
+### 2.2. Activate Compiler Toolset
 
-```bash
+To ensure vLLM compiles with the correct C++/GCC version, activate the
+gcc-toolset-12:
 
-oc apply -f pvc.yaml 
-oc apply -f secret.yaml 
-oc apply -f vllm.yaml 
-oc apply -f service.yaml 
-oc apply -f route.yaml 
+\# This command starts a new shell session with the toolset active
 
-```
+scl enable gcc-toolset-12 bash
 
-You may need to change the resource values in the vllm.yaml file, current values are
-- cpu : 48
-- memory : 32Gi
+\# You can verify the version after
 
-Use the the route url to access the inference endpoint
+gcc --version
 
-```bash
+### 2.3. Create & Activate Virtual Environment
 
-curl -X POST http://<rout-url>/v1/chat/completions   -H "Content-Type: application/json"   -d '{
-    "model": "meta-llama/Llama-3.2-1B-Instruct",
-    "messages": [
-      {
-        "role": "user",
-        "content": "<prompt>"
-      }
-    ]
-  }'
+Create a new virtual environment using Python 3.12 and activate it.
 
-```
+\# Create the environment
 
-Use the following [tool](https://github.com/vllm-project/guidellm) to benchmark vllm cpu 
+uv venv --python 3.12 --seed
 
-Typical usage could be something like this 
+\# Activate the environment
 
-```bash
-guidellm benchmark --target http://<route-url>/v1 --model meta-llama/Llama-3.2-1B-Instruct --data "prompt_tokens=512,output_tokens=128" --rate-type sweep --max-seconds 240
+source .venv/bin/activate
 
-```
+## 3. Build and Install Dependencies
 
-## Acknowledgemet
+This process requires manually building libkineto and installing a
+specific ZenDNN-enabled version of PyTorch.
 
-[link](https://developers.redhat.com/author/sai-sindhur-malleni) How to run vLLM on CPUs with OpenShift for GPU-free inference
+### 3.1. Install libkineto
 
+\# Check out the repo and its submodules
 
+git clone --recursive https://github.com/pytorch/kineto.git
 
- 
+cd kineto/libkineto
+
+\# Build libkineto with cmake
+
+mkdir build && cd build
+
+cmake ..
+
+make
+
+sudo make install
+
+\# Return to your original project directory
+
+cd ../../..
+
+### 3.2. Install ZenDNN-enabled PyTorch
+
+\# Uninstall any existing zentorch
+
+uv pip uninstall zentorch
+
+\# Install ZenDNN-enabled PyTorch (v2.7.0)
+
+uv pip install torch==2.7.0 --index-url
+https://download.pytorch.org/whl/cpu
+
+\# Install ZenDNN
+
+uv pip install zentorch==5.1.0
+
+## 4. Build vLLM from Source
+
+Now, we can clone and build the vLLM project itself.
+
+\# Clone the vLLM repository
+
+git clone https://github.com/vllm-project/vllm.git vllm_source
+
+cd vllm_source
+
+\# Install vLLM build-time and CPU runtime dependencies
+
+uv pip install -r requirements/cpu-build.txt --torch-backend cpu
+
+uv pip install -r requirements/cpu.txt --torch-backend cpu
+
+\# Build vLLM, targeting the CPU
+
+VLLM_TARGET_DEVICE=cpu uv pip install . --no-build-isolation
+
+## 5. Runtime Configuration
+
+Before running the vLLM server, you must export several environment
+variables to configure ZenDNN and vLLM performance.
+
+\# ZenDNN settings
+
+export ZENDNN_TENSOR_POOL_LIMIT=1024
+
+export ZENDNN_MATMUL_ALGO=FP32:4,BF16:0
+
+export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
+
+export ZENDNN_WEIGHT_CACHING=1
+
+\# vLLM CPU settings
+
+export VLLM_CPU_KVCACHE_SPACE=90
+
+export VLLM_CPU_OMP_THREADS_BIND="0-15\|16-31\|32-47\|48-63"
+
+\# Set the Hugging Face token
+
+export HUGGING_FACE_HUB_TOKEN=xxx
+
+## 6. Usage Example
+
+Finally, we can run the vLLM server. Ensure your environment variables
+(from Step 5) are set in your current shell.
+
+vllm serve meta-llama/Llama-3.2-1B-Instruct -tp 2
