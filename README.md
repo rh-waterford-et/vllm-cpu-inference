@@ -116,10 +116,10 @@ cd ../../..
 uv pip uninstall zentorch
 ```
 
-\# Install ZenDNN-enabled PyTorch (v2.7.0)
+\# Install ZenDNN-enabled PyTorch (v2.6.0)
 
 ```bash
-uv pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cpu
+uv pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 ```
 
 \# Install ZenDNN
@@ -130,7 +130,7 @@ uv pip install zentorch==5.1.0
 
 ## 4. Build vLLM from Source
 
-Now, we can clone and build the vLLM project itself.
+Now, we can clone and build the vLLM project itself. (N.B. for ZenDNN 5.1.0 we need to use vLLM 0.9.2)
 
 \# Clone the vLLM repository
 
@@ -139,15 +139,17 @@ Now, we can clone and build the vLLM project itself.
 git clone https://github.com/vllm-project/vllm.git vllm_source
 
 cd vllm_source
+
+git checkout v0.9.2
 ```
 
 \# Install vLLM build-time and CPU runtime dependencies
 
 
 ```bash
-uv pip install -r requirements/cpu-build.txt --torch-backend cpu
+uv pip install -r requirements/cpu-build.txt --torch-backend cpu --index-strategy unsafe-best-match
 
-uv pip install -r requirements/cpu.txt --torch-backend cpu
+uv pip install -r requirements/cpu.txt --torch-backend cpu --index-strategy unsafe-best-match
 ```
 
 \# Build vLLM, targeting the CPU
@@ -155,7 +157,11 @@ uv pip install -r requirements/cpu.txt --torch-backend cpu
 ```bash
 VLLM_TARGET_DEVICE=cpu uv pip install . --no-build-isolation
 
+# if you get aimv2 error already in use install the following
+
+uv pip install "transformers<4.54.0"
 ```
+
 ## 5. Runtime Configuration
 
 Before running the vLLM server, you must export several environment
@@ -172,6 +178,8 @@ export ZENDNN_MATMUL_ALGO=FP32:4,BF16:0
 export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
 
 export ZENDNN_WEIGHT_CACHING=1
+
+export VLLM_PLUGINS="torch==2.6.0"
 ```
 
 \# vLLM CPU settings
@@ -180,7 +188,9 @@ export ZENDNN_WEIGHT_CACHING=1
 ```bash
 export VLLM_CPU_KVCACHE_SPACE=90
 
-export VLLM_CPU_OMP_THREADS_BIND="0-15\|16-31\|32-47\|48-63"
+#export VLLM_CPU_OMP_THREADS_BIND="0-15|16-31|32-47|48-63"
+
+export VLLM_CPU_OMP_THREADS_BIND="0-63|64-127|128-191"
 ```
 
 \# Set the Hugging Face token
@@ -197,9 +207,15 @@ Finally, we can run the vLLM server. Ensure your environment variables
 
 ```bash
 # serve:
-vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 4
+vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 3
 
  
 # test:
 vllm bench serve --dataset-name random --model meta-llama/Llama-3.2-1B-Instruct --host 0.0.0.0 --port 8000 --num-prompts 100 --random-prefix-len 512 --random-input-len 512 --random-output-len 512
+```
+
+## 7. Use GuideLLM for benchmarking
+
+```bash
+guidellm benchmark --target http://<host>/v1 --model meta-llama/Llama-3.2-1B-Instruct --data "prompt_tokens=512,output_tokens=128" --rate-type sweep --max-seconds 240
 ```
