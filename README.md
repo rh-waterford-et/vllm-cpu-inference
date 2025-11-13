@@ -15,11 +15,11 @@ sudo dnf install git cmake
 sudo dnf group install "Development Tools"
 ```
 
-\# Install specific compiler toolchain (GCC 12) and LLVM
+[//]: # (this won't work in rhel or fedora based systems)
 
-```bash
-sudo dnf install -y gcc-12 g++-12 llvm-toolset
-```
+[//]: # (Install specific compiler toolchain GCC 12 and LLVM)
+
+[//]: # (sudo dnf install -y gcc-12 g++-12 llvm-toolset)
 
 \# Install required libraries for vLLM and Python
 
@@ -33,7 +33,7 @@ We will use uv for package management and a specific compiler toolset.
 
 ### 2.1. Install uv
 
-Install the uv Python package manager:
+\# Install the uv Python package manager:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh \| sh
