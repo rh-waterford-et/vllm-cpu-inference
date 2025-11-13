@@ -33,7 +33,7 @@ cd vllm_source
 ```bash
 pip uninstall zentorch
 # from blog torch==2.6.0 is recommended
-pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 pip install zentorch==5.1.0
 ```
 
@@ -54,10 +54,14 @@ export VLLM_CPU_KVCACHE_SPACE=90
 export VLLM_CPU_OMP_THREADS_BIND='0-31|32-63'
 export HUGGING_FACE_HUB_TOKEN=xxx
 
-# not so sure about this setting
-# export VLLM_PLUGINS="torch==2.7.0"
+# might need to install this version of transformers (for error 'aimv2 is already used')
+pip install "transformers<4.54.0"
 
-vllm serve meta-llama/Llama-3.2-1B-Instruct -tp 2 
+# serve:
+vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 2
+
+# test:
+vllm bench serve --dataset-name random --model meta-llama/Llama-3.2-1B-Instruct --host 0.0.0.0 --port 8000 --num-prompts 100 --random-prefix-len 512 --random-input-len 512 --random-output-len 512
 
 ```
 
