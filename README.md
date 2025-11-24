@@ -188,9 +188,7 @@ export VLLM_PLUGINS="torch==2.6.0"
 ```bash
 export VLLM_CPU_KVCACHE_SPACE=90
 
-#export VLLM_CPU_OMP_THREADS_BIND="0-15|16-31|32-47|48-63"
-
-export VLLM_CPU_OMP_THREADS_BIND="0-63|64-127|128-191"
+export VLLM_CPU_OMP_THREADS_BIND="0-47|48-91|92-127|128-191"
 ```
 
 \# Set the Hugging Face token
@@ -207,7 +205,7 @@ Finally, we can run the vLLM server. Ensure your environment variables
 
 ```bash
 # serve:
-vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 3
+vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 4
 
  
 # test:
