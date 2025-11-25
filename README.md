@@ -217,3 +217,18 @@ vllm bench serve --dataset-name random --model meta-llama/Llama-3.2-1B-Instruct 
 ```bash
 guidellm benchmark --target http://<host>/v1 --model meta-llama/Llama-3.2-1B-Instruct --data "prompt_tokens=512,output_tokens=128" --rate-type sweep --max-seconds 240
 ```
+
+## 8. Curl Test
+
+```bash
+curl -X POST http://<route-url>/v1/chat/completions   -H "Content-Type: application/json"   -d '{
+    "model": "meta-llama/Llama-3.2-1B-Instruct",
+    "messages": [
+      {
+        "role": "user",
+        "content": "<prompt>"
+      }
+    ]
+  }'
+
+```

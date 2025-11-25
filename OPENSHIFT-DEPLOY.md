@@ -51,7 +51,7 @@ Use the the route url to access the inference endpoint
 
 ```bash
 
-curl -X POST http://<rout-url>/v1/chat/completions   -H "Content-Type: application/json"   -d '{
+curl -X POST http://<route-url>/v1/chat/completions   -H "Content-Type: application/json"   -d '{
     "model": "meta-llama/Llama-3.2-1B-Instruct",
     "messages": [
       {
