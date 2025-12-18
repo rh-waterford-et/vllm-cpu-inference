@@ -1,6 +1,13 @@
+# Overview 
+
 This guide provides step-by-step instructions for compiling vLLM from
-source for a CPU-only environment, specifically on a Fedora-based system
-(using dnf). It includes instructions for building with ZenDNN support.
+source for a CPU-only environment, 
+
+**NB** this is specifically for Fedora-based systems (using dnf). 
+
+It includes instructions for building with ZenDNN support.
+
+For Debian builds please follow this [guide](https://docs.vllm.ai/en/stable/getting_started/installation/cpu/) 
 
 ## 1.Prerequisites (System Dependencies)
 
@@ -36,7 +43,7 @@ We will use uv for package management and a specific compiler toolset.
 \# Install the uv Python package manager:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh \| sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Note: You may need to restart your shell or source your .bashrc/.zshrc
@@ -203,7 +210,10 @@ export HUGGING_FACE_HUB_TOKEN=xxx
 Finally, we can run the vLLM server. Ensure your environment variables
 (from Step 5) are set in your current shell.
 
+**N.B.** - There is a script provided in this repo (scripts/launch.sh) that handles all the envars and launches vllm
+
 ```bash
+# parameters  provided by AMD engineers
 # serve:
 vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 4
 
@@ -230,5 +240,4 @@ curl -X POST http://<route-url>/v1/chat/completions   -H "Content-Type: applicat
       }
     ]
   }'
-
 ```
