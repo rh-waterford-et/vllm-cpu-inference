@@ -2,7 +2,7 @@ FROM registry.redhat.io/ubi9/python-312
 
 # refer to https://github.com/MekayelAnik/vllm-cpu
 
-ARG VLLM_VERSION=0.12.0
+ARG VLLM_VERSION=0.13.0
 ARG PYTHON_VERSION=auto
 ARG VARIANT=amxbf16
 ARG USE_GITHUB_RELEASE=false
@@ -167,7 +167,7 @@ ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never
 
-RUN uv pip install vllm-cpu-amxbf16==0.12.0.post2 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+RUN uv pip install vllm-cpu-amxbf16==0.13.0 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
 # Copy chat template (used for testing should be updated for each model)
 COPY chat-template.j2 /data/config/vllm/

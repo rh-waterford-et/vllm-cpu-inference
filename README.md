@@ -1,9 +1,9 @@
 # Overview 
 
 This guide provides step-by-step instructions for compiling vLLM from
-source for a CPU-only environment, 
+source for **AMD-EPYC** bare metal CPU only servers.
 
-**NB** this is specifically for Fedora-based systems (using dnf). 
+**NB** this is specifically for Fedora/Rhel based systems (using dnf). 
 
 It includes instructions for building with ZenDNN support.
 
@@ -17,16 +17,8 @@ development tools, compilers, and required libraries.
 \# Install essential build tools
 
 ```bash
-sudo dnf install git cmake
-
-sudo dnf group install "Development Tools"
+sudo dnf install git cmake make autoconf binutils gcc g++
 ```
-
-[//]: # (this won't work in rhel or fedora based systems)
-
-[//]: # (Install specific compiler toolchain GCC 12 and LLVM)
-
-[//]: # (sudo dnf install -y gcc-12 g++-12 llvm-toolset)
 
 \# Install required libraries for vLLM and Python
 
@@ -49,24 +41,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Note: You may need to restart your shell or source your .bashrc/.zshrc
 file after this step.
 
-### 2.2. Activate Compiler Toolset
-
-To ensure vLLM compiles with the correct C++/GCC version, activate the
-gcc-toolset-12:
-
-\# This command starts a new shell session with the toolset active
-
-```bash
-scl enable gcc-toolset-12 bash
-```
-
-\# You can verify the version after
-
-```bash
-gcc --version
-```
-
-### 2.3. Create & Activate Virtual Environment
+### 2.2. Create & Activate Virtual Environment
 
 Create a new virtual environment using Python 3.12 and activate it.
 
@@ -126,7 +101,7 @@ uv pip uninstall zentorch
 \# Install ZenDNN-enabled PyTorch (v2.6.0)
 
 ```bash
-uv pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+uv pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu
 ```
 
 \# Install ZenDNN
@@ -147,7 +122,7 @@ git clone https://github.com/vllm-project/vllm.git vllm_source
 
 cd vllm_source
 
-git checkout v0.9.2
+git checkout v0.13.0
 ```
 
 \# Install vLLM build-time and CPU runtime dependencies
@@ -178,31 +153,18 @@ variables to configure ZenDNN and vLLM performance.
 
 
 ```bash
-export ZENDNN_TENSOR_POOL_LIMIT=1024
+export TORCHINDUCTOR_FREEZING=0 
+export ZENTORCH_LINEAR=1 
+export USE_ZENDNN_MATMUL_DIRECT=1 
+export USE_ZENDNN_SDPA_MATMUL_DIRECT=1 
+export ZENDNNL_MATMUL_WEIGHT_CACHE=1 
+export ZENDNNL_MATMUL_ALGO=1
 
-export ZENDNN_MATMUL_ALGO=FP32:4,BF16:0
-
-export ZENDNN_PRIMITIVE_CACHE_CAPACITY=1024
-
-export ZENDNN_WEIGHT_CACHING=1
-
-export VLLM_PLUGINS="torch==2.6.0"
-```
-
-\# vLLM CPU settings
-
-
-```bash
-export VLLM_CPU_KVCACHE_SPACE=90
-
-export VLLM_CPU_OMP_THREADS_BIND="0-47|48-91|92-127|128-191"
-```
-
-\# Set the Hugging Face token
-
-
-```bash
-export HUGGING_FACE_HUB_TOKEN=xxx
+# vLLM CPU settings
+export VLLM_CPU_KVCACHE_SPACE=90        # GB for KV cache
+export VLLM_CPU_OMP_THREADS_BIND=0-95   # CPU cores to use
+export HUGGING_FACE_HUB_TOKEN=$(cat ~/.cache/huggingface/token)
+export VLLM_PLUGINS="torch==2.9.1"
 ```
 
 ## 6. Usage Example
@@ -215,9 +177,8 @@ Finally, we can run the vLLM server. Ensure your environment variables
 ```bash
 # parameters  provided by AMD engineers
 # serve:
-vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching -tp 4
+vllm serve meta-llama/Llama-3.2-1B-Instruct --dtype=bfloat16 --trust_remote_code --host 0.0.0.0 --port 8000 --max-log-len 0 --max-num-seqs 256 --enable-chunked-prefil --enable-prefix-caching 
 
- 
 # test:
 vllm bench serve --dataset-name random --model meta-llama/Llama-3.2-1B-Instruct --host 0.0.0.0 --port 8000 --num-prompts 100 --random-prefix-len 512 --random-input-len 512 --random-output-len 512
 ```
@@ -225,7 +186,7 @@ vllm bench serve --dataset-name random --model meta-llama/Llama-3.2-1B-Instruct 
 ## 7. Use GuideLLM for benchmarking
 
 ```bash
-guidellm benchmark --target http://<host>/v1 --model meta-llama/Llama-3.2-1B-Instruct --data "prompt_tokens=512,output_tokens=128" --rate-type sweep --max-seconds 240
+guidellm benchmark --target http://<host>/v1 --model meta-llama/Llama-3.2-1B-Instruct --data "prompt_tokens=128,output_tokens=256" --rate-type sweep --max-seconds 90
 ```
 
 ## 8. Curl Test
@@ -240,4 +201,17 @@ curl -X POST http://<route-url>/v1/chat/completions   -H "Content-Type: applicat
       }
     ]
   }'
+```
+
+## 9. Fine tuning (optional)
+
+Execute the follow commands 
+
+```bash
+# interrupt noise elimination
+sudo systemctl disable --now irqbalance
+
+# frequency stability
+sudo systemctl enable --now tuned
+sudo tuned-adm profile throughput-performance
 ```
