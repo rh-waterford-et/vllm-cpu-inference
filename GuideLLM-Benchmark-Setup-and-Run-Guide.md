@@ -17,7 +17,7 @@ This document describes how to set up and run the GuideLLM benchmark on a RHEL 1
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-\#Verify installation: 
+\# Verify installation: 
 ```bash
 uv --version
 ```
@@ -65,7 +65,7 @@ guidellm benchmark \
   --max-seconds 90
 ```
 
-## 7. Downloado benchmark results to local machine
+## 7. Download benchmark results to local machine
 \# Run this command from your local system: 
 
 ```bash
@@ -74,5 +74,5 @@ ec2-user@<host ip> :/home/ec2-user/results/<dateoftest> \
 ~/Desktop/vLLM-Test-Results/
 ```
 
-\#This will copy the entire test run directory for local analysis.
+\# This will copy the entire test run directory for local analysis.
 
