@@ -17,7 +17,8 @@ development tools, compilers, and required libraries.
 \# Install essential build tools
 
 ```bash
-sudo dnf install git cmake make autoconf binutils gcc g++
+sudo dnf install git cmake make autoconf binutils gcc g++ pkgconf-pkg-config build-essentials
+
 ```
 
 \# Install required libraries for vLLM and Python
@@ -215,3 +216,29 @@ sudo systemctl disable --now irqbalance
 sudo systemctl enable --now tuned
 sudo tuned-adm profile throughput-performance
 ```
+
+## 10. Adding libtcmalloc and libomp libraries (optional)
+
+Install libomp
+
+```bash
+
+sudo dnf install llvm-toolset
+```
+
+For libtcmalloc you will need to build from source
+
+```bash
+git clone https://github.com/gperftools/gperftools.git
+cd gperftools/
+./configure
+make
+sudo make install
+```
+
+Export the libraries
+
+```bash
+export LD_PRELOAD=/usr/local/lib/libtcmalloc_minimal.so.4:/usr/lib64/libomp.so:$LD_PRELOAD
+```
+
